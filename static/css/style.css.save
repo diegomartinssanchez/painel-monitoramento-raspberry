@@ -107,15 +107,10 @@ button:hover {
 .level-warning { background-color: var(--status-warning) !important; color: var(--status-warning); }
 .level-critical { background-color: var(--status-critical) !important; color: var(--status-critical); }
 
-#cpu-temp.level-normal { color: var(--status-normal); background: transparent !important; }
-#cpu-temp.level-warning { color: var(--status-warning); background: transparent !important; }
-#cpu-temp.level-critical { color: var(--status-critical); background: transparent !important; }
-
 .sub-metric {
     font-size: 0.9rem;
     color: var(--text-secondary);
 }
-
 .fill.level-normal { background-color: var(--status-normal); }
 .fill.level-warning { background-color: var(--status-warning); }
 .fill.level-critical { background-color: var(--status-critical); }
