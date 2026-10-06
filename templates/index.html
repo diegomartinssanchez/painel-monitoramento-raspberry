@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Monitoramento - Raspberry Pi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-info">
+                <h1>Painel do Nó (<span id="hostname">Carregando...</span>)</h1>
+                <p>IP Local: <span id="ip-address">--</span> | Uptime: <span id="uptime">--</span></p>
+            </div>
+            <div class="header-actions">
+                <button id="btn-atualizar" onclick="carregarStatus()">Atualizar Agora</button>
+                <small>Última verificação: <span id="last-update">--</span></small>
+            </div>
+        </header>
+
+        <main class="grid">
+            <section class="card">
+                <h2>Processador (CPU)</h2>
+                <div class="metric">
+                    <span class="value" id="cpu-percent">0%</span>
+                    <span class="label">Utilização</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="fill" id="cpu-bar" style="width: 0%;"></div>
+                </div>
+                <div class="sub-metric">
+                    Temperatura: <strong id="cpu-temp">-- °C</strong>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Memória RAM</h2>
+                <div class="metric">
+                    <span class="value" id="ram-percent">0%</span>
+                    <span class="label">Utilização</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="fill" id="ram-bar" style="width: 0%;"></div>
+                </div>
+                <div class="sub-metric">
+                    <span id="ram-used">--</span> MB de <span id="ram-total">--</span> MB
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Armazenamento (Disco /)</h2>
+                <div class="metric">
+                    <span class="value" id="disk-percent">0%</span>
+                    <span class="label">Utilização</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="fill" id="disk-bar" style="width: 0%;"></div>
+                </div>
+                <div class="sub-metric">
+                    <span id="disk-used">--</span> GB de <span id="disk-total">--</span> GB
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
