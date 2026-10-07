@@ -1,95 +1,60 @@
-import os
 import platform
 import socket
-import time
-from datetime import datetime, timedelta
-from flask import Flask, jsonify, render_template
+from datetime import datetime
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 import psutil
-
-app = Flask(__name__)
-
-
-def obter_ip_local() -> str:
-    """Obtém o IP local da Raspberry Pi na rede local."""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("8.8.8.8", 80))
-            return s.getsockname()[0]
-    except Exception:
-        return "127.0.0.1"
+import uvicorn
+from fastapi.templating import Jinja2Templates
 
 
-def obter_temperatura_cpu() -> float | None:
-    """Lê a temperatura nativa da CPU da Raspberry Pi via sysfs Linux."""
-    caminho_termico = "/sys/class/thermal/thermal_zone0/temp"
-    try:
-        if os.path.exists(caminho_termico):
-            with open(caminho_termico, "r", encoding="utf-8") as f:
-                return round(float(f.read().strip()) / 1000.0, 1)
+from entity import Cpu, Host, InfosRaspberry, Memoria, Armazenamento
+from service import obter_disco_livre, obter_disco_total, obter_ip_local, obter_memoria_total, obter_temperatura_cpu, obter_tempo_atividade, obter_uso_cpu, obter_uso_disco, obter_uso_memoria
 
-        temps = getattr(psutil, "sensors_temperatures", lambda: {})()
-        if "cpu_thermal" in temps and temps["cpu_thermal"]:
-            return round(temps["cpu_thermal"][0].current, 1)
-    except Exception:
-        pass
-    return None
+app = FastAPI()
+app.mount("/static",StaticFiles(directory="static"),name="static")
+
+templates = Jinja2Templates(directory="templates")
 
 
-def obter_tempo_atividade(boot_timestamp: float) -> str:
-    """Formata o tempo decorrido desde a inicialização (uptime)."""
-    segundos_ativos = int(time.time() - boot_timestamp)
-    delta = timedelta(seconds=segundos_ativos)
-    dias = delta.days
-    horas, resto = divmod(delta.seconds, 3600)
-    minutos, segundos = divmod(resto, 60)
-
-    if dias > 0:
-        return f"{dias}d {horas:02d}h {minutos:02d}m {segundos:02d}s"
-    return f"{horas:02d}h {minutos:02d}m {segundos:02d}s"
+@app.get("/")
+def index(request: Request):
+    return templates.TemplateResponse(request=request,name="index.html",context={"request": request})
 
 
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-
-@app.route("/api/status", methods=["GET"])
+@app.get("/api/status", response_model=InfosRaspberry)
 def api_status():
     try:
         uso_disco = psutil.disk_usage("/")
         uso_memoria = psutil.virtual_memory()
         boot_time = psutil.boot_time()
 
-        dados = {
-            "status": "sucesso",
-            "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-            "host": {
-                "nome": socket.gethostname(),
-                "ip": obter_ip_local(),
-                "sistema": f"{platform.system()} {platform.release()} ({platform.machine()})",
-                "uptime": obter_tempo_atividade(boot_time),
-            },
-            "cpu": {
-                "uso_percentual": psutil.cpu_percent(interval=0.5),
-                "temperatura": obter_temperatura_cpu(),
-                "nucleos": psutil.cpu_count(logical=True),
-            },
-            "memoria": {
-                "total_mb": round(uso_memoria.total / (1024 * 1024), 1),
-                "usada_mb": round(uso_memoria.used / (1024 * 1024), 1),
-                "percentual": uso_memoria.percent,
-            },
-            "armazenamento": {
-                "total_gb": round(uso_disco.total / (1024**3), 2),
-                "usado_gb": round(uso_disco.used / (1024**3), 2),
-                "livre_gb": round(uso_disco.free / (1024**3), 2),
-                "percentual": uso_disco.percent,
-            },
-        }
-        return jsonify(dados), 200
+        return InfosRaspberry(
+            status="sucesso",
+            timestamp=datetime.now(),
+            host=Host(
+                nome=socket.gethostname(),
+                ip=obter_ip_local(),
+                sistema=f"{platform.system()} {platform.release()} ({platform.machine()})",
+                uptime=obter_tempo_atividade(boot_time),
+            ),
+            cpu=Cpu(
+                uso_percentual=obter_uso_cpu(),
+                temperatura=obter_temperatura_cpu(),
+                nucleos=psutil.cpu_count(logical=True),
+            ),
+            memoria=Memoria(
+                total_mb=obter_memoria_total(),
+                usada_mb=obter_uso_memoria(),
+                percentual=uso_memoria.percent,
+            ),
+            armazenamento=Armazenamento(
+                total_gb=obter_disco_total(),
+                usado_gb=obter_uso_disco(),
+                livre_gb=obter_disco_livre(),
+                percentual=uso_disco.percent,
+            ),
+        )
     except Exception as erro:
-        return jsonify({"status": "erro", "mensagem": str(erro)}), 500
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+        print(f"ERRO: {type(erro).__name__}: {erro}")
+        raise HTTPException(status_code=500,detail=str(erro))
