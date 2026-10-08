@@ -1,6 +1,7 @@
 import socket
 import time
 import psutil
+import os
 from datetime import datetime, timedelta
 
 def obter_ip_local() -> str:
